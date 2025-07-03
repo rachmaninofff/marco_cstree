@@ -97,43 +97,43 @@ class IntentMarcoPolo:
             if is_sat:
                 # 优化版MARCO的核心：
                 # 一个通过最大模型找到的可满足种子，其本身就是一个MSS。
-                MSS = seed
+                    MSS = seed
                 yield ("S", MSS)
                 with self.stats.time('block_down'):
                     self.map.block_down(MSS)
-                
+
                 if self.config['verbose']:
                     print(f"- MSS已找到并阻塞: {self._indices_to_intent_ids(MSS)}")
             else:
                 # 种子不可满足，调用CS-tree进行批量shrink
                 self.got_top = True
-                with self.stats.time('cs_tree_shrink'):
-                    muses_batch = self.cs_tree_batch_shrink(seed)
-                
-                if self.config['verbose']:
+                    with self.stats.time('cs_tree_shrink'):
+                    muses_batch = self.find_all_muses(seed)
+
+                    if self.config['verbose']:
                     print(f"- CS-tree找到 {len(muses_batch)} 个MUS")
-                
-                with self.stats.time('block_batch'):
+
+                    with self.stats.time('block_batch'):
                     if not muses_batch:
-                        # 如果没有找到MUS，阻塞当前种子以避免死循环
-                        self.map.block_up(seed)
+                            # 如果没有找到MUS，阻塞当前种子以避免死循环
+                            self.map.block_up(seed)
                         self.stats.increment_counter("cs_tree_rejected")
-                    else:
-                        # 批量处理返回的MUS
+                        else:
+                            # 批量处理返回的MUS
                         for mus in muses_batch:
                             yield ("U", mus)
-                            self.map.block_up(mus)
+                                self.map.block_up(mus)
 
-                            if self.config['verbose']:
-                                print(f"- MUS已阻塞: {self._indices_to_intent_ids(mus)}")
+                                if self.config['verbose']:
+                                    print(f"- MUS已阻塞: {self._indices_to_intent_ids(mus)}")
 
         if self.pipe:
             self.pipe.send(('complete', self.stats))
             self.recv_thread.join()
 
-    def cs_tree_batch_shrink(self, unsat_seed):
+    def find_all_muses(self, unsat_seed):
         """
-        CS-tree批量MUS枚举算法的入口
+        基于递归分解的MUS枚举算法入口 (替代CS-tree)
         
         Args:
             unsat_seed: 不可满足的意图索引集合
@@ -142,50 +142,54 @@ class IntentMarcoPolo:
             list: 包含在unsat_seed中的所有MUS的列表
         """
         if self.config['verbose']:
-            print(f"开始CS-tree shrink，种子: {self._indices_to_intent_ids(unsat_seed)}")
+            print(f"开始递归分解 shrink，种子: {self._indices_to_intent_ids(unsat_seed)}")
 
         found_muses = []
-        self._recursive_cs_tree(set(), set(unsat_seed), found_muses)
+        # 初始调用：候选集是整个种子，背景集为空
+        self._find_all_muses_recursive(set(unsat_seed), set(), found_muses)
         
         if self.config['verbose']:
-            print(f"CS-tree完成，共找到 {len(found_muses)} 个MUS")
+            print(f"递归分解完成，共找到 {len(found_muses)} 个MUS")
             
         return [list(mus) for mus in found_muses]
 
-    def _recursive_cs_tree(self, D, P, A):
+    def _find_all_muses_recursive(self, C, B, known_muses):
         """
-        修正后的CS-tree递归实现
+        递归分解算法的核心实现 (QuickXplain变体)
         
         Args:
-            D: determined set - 当前路径上必须包含的意图集合
-            P: potential set - 当前节点下待探索的意图集合  
-            A: answers - 存储已找到MUS的列表（引用传递）
+            C (set): 候选意图集 (candidate set)
+            B (set): 背景意图集 (background set), 我们假定这些必须存在
+            known_muses (list): 全局已知的MUS列表，用于剪枝
         """
-        # 剪枝1：超集剪枝 - 如果D已经是某个已知MUS的超集，则此路径无效
-        if any(known_mus.issubset(D) for known_mus in A):
+        # 剪枝1: 如果背景B本身已经是某个已知MUS的超集，则此路径不可能产生新的*最小*集
+        if any(mus.issubset(B) for mus in known_muses):
+                return
+
+        # 剪枝2: 如果候选和背景的并集是可满足的，那么没有任何子集能与背景构成冲突
+        is_sat_with_candidates, _ = self.intent_processor.check(B | C)
+        if is_sat_with_candidates:
+                return
+
+        # 终止条件: 如果候选集为空
+        if not C:
+            # 此时 B | C (即 B) 是一个不可满足集。
+            # 因为通过了剪枝1，它不是任何已知MUS的超集，所以它是一个新的MUS。
+            known_muses.append(B)
             return
 
-        # 剪枝2：可满足性剪枝 - 如果 D U P 可满足，此路径无效
-        is_sat, _ = self.intent_processor.check(D | P)
-        if is_sat:
-            return
+        # 分而治之 (Divide and Conquer)
+        c = C.pop() # 从候选集中选择一个元素
+        C_prime = C
 
-        # 基本情况：如果P为空，则D是一个不可满足核
-        if not P:
-            # 此时的D已经通过了超集剪枝和可满足性剪枝（D自身是UNSAT）
-            # 它是一个新的MUS
-            A.append(D)
-            return
-
-        # 递归步骤：选择一个元素c，并探索两条分支
-        c = P.pop() 
-
-        # 分支1: 探索不包含c的子空间 (D, P)
-        self._recursive_cs_tree(D.copy(), P.copy(), A)
-
-        # 分支2: 探索包含c的子空间 (D U {c}, P)
-        D.add(c)
-        self._recursive_cs_tree(D.copy(), P.copy(), A)
+        # 递归调用1 (探索不包含c的子问题):
+        # 在 B 的背景下，从 C' 中寻找MUS
+        self._find_all_muses_recursive(C_prime.copy(), B.copy(), known_muses)
+        
+        # 递归调用2 (探索包含c的子问题):
+        # 在 B U {c} 的新背景下，从 C' 中寻找MUS的"补充部分"
+        B.add(c)
+        self._find_all_muses_recursive(C_prime.copy(), B.copy(), known_muses)
 
     def _indices_to_intent_ids(self, indices):
         """将意图索引集合转换为意图ID列表，用于调试输出"""
