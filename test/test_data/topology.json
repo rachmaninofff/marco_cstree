@@ -1,0 +1,1228 @@
+{
+    "routers": [
+        "Trbovl_1",
+        "Krsko_1",
+        "Celje_1",
+        "Lasko_1",
+        "Kranj_1",
+        "Bled_1",
+        "NovoMe_1",
+        "Ljublj_1",
+        "Tolmin_1",
+        "NovaGo_1",
+        "Portor_1",
+        "Gornja_1",
+        "Radenc_1",
+        "Rogasj_1",
+        "Senoze_1",
+        "Jeseni_1",
+        "Sezana_1",
+        "Divaca_1",
+        "Postoj_1",
+        "Ajdovs_1",
+        "Kovevj_1",
+        "Kamnik_1",
+        "Izola_1",
+        "Koper_1",
+        "Sloven_1",
+        "Velenj_1",
+        "Murska_1",
+        "Ljutom_1",
+        "Ormoz_1",
+        "Ptuj_1",
+        "Maribo_1",
+        "SlovenID31_1",
+        "Dravog_1",
+        "Ravnen_1",
+        "Trbovl_2",
+        "Krsko_2",
+        "Celje_2",
+        "Lasko_2",
+        "Kranj_2",
+        "Bled_2",
+        "NovoMe_2",
+        "Ljublj_2",
+        "Tolmin_2",
+        "NovaGo_2",
+        "Portor_2",
+        "Gornja_2",
+        "Radenc_2",
+        "Rogasj_2",
+        "Senoze_2",
+        "Jeseni_2",
+        "Sezana_2",
+        "Divaca_2",
+        "Postoj_2",
+        "Ajdovs_2",
+        "Kovevj_2",
+        "Kamnik_2",
+        "Izola_2",
+        "Koper_2",
+        "Sloven_2",
+        "Velenj_2",
+        "Murska_2",
+        "Ljutom_2",
+        "Ormoz_2",
+        "Ptuj_2",
+        "Maribo_2",
+        "SlovenID31_2",
+        "Dravog_2",
+        "Ravnen_2",
+        "Trbovl_3",
+        "Krsko_3",
+        "Celje_3",
+        "Lasko_3",
+        "Kranj_3",
+        "Bled_3",
+        "NovoMe_3",
+        "Ljublj_3",
+        "Tolmin_3",
+        "NovaGo_3",
+        "Portor_3",
+        "Gornja_3",
+        "Radenc_3",
+        "Rogasj_3",
+        "Senoze_3",
+        "Jeseni_3",
+        "Sezana_3",
+        "Divaca_3",
+        "Postoj_3",
+        "Ajdovs_3",
+        "Kovevj_3",
+        "Kamnik_3",
+        "Izola_3",
+        "Koper_3",
+        "Sloven_3",
+        "Velenj_3",
+        "Murska_3",
+        "Ljutom_3",
+        "Ormoz_3",
+        "Ptuj_3",
+        "Maribo_3",
+        "SlovenID31_3",
+        "Dravog_3",
+        "Ravnen_3"
+    ],
+    "links": [
+        {
+            "node1": {
+                "name": "Trbovl_1"
+            },
+            "node2": {
+                "name": "Lasko_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Trbovl_1"
+            },
+            "node2": {
+                "name": "Ljublj_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Krsko_1"
+            },
+            "node2": {
+                "name": "Rogasj_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Krsko_1"
+            },
+            "node2": {
+                "name": "NovoMe_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Celje_1"
+            },
+            "node2": {
+                "name": "Velenj_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Celje_1"
+            },
+            "node2": {
+                "name": "Lasko_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Celje_1"
+            },
+            "node2": {
+                "name": "Kamnik_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Celje_1"
+            },
+            "node2": {
+                "name": "SlovenID31_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Lasko_1"
+            },
+            "node2": {
+                "name": "Maribo_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Lasko_1"
+            },
+            "node2": {
+                "name": "Ljublj_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Kranj_1"
+            },
+            "node2": {
+                "name": "Jeseni_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Kranj_1"
+            },
+            "node2": {
+                "name": "Koper_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Kranj_1"
+            },
+            "node2": {
+                "name": "Bled_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Kranj_1"
+            },
+            "node2": {
+                "name": "Ljublj_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Bled_1"
+            },
+            "node2": {
+                "name": "Tolmin_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "NovoMe_1"
+            },
+            "node2": {
+                "name": "Kovevj_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_1"
+            },
+            "node2": {
+                "name": "NovaGo_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_1"
+            },
+            "node2": {
+                "name": "Postoj_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_1"
+            },
+            "node2": {
+                "name": "Kovevj_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_1"
+            },
+            "node2": {
+                "name": "Kamnik_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_1"
+            },
+            "node2": {
+                "name": "Koper_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_1"
+            },
+            "node2": {
+                "name": "Maribo_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Tolmin_1"
+            },
+            "node2": {
+                "name": "NovaGo_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "NovaGo_1"
+            },
+            "node2": {
+                "name": "Ajdovs_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Portor_1"
+            },
+            "node2": {
+                "name": "Divaca_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Portor_1"
+            },
+            "node2": {
+                "name": "Izola_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Gornja_1"
+            },
+            "node2": {
+                "name": "Radenc_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Gornja_1"
+            },
+            "node2": {
+                "name": "Maribo_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Radenc_1"
+            },
+            "node2": {
+                "name": "Murska_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Rogasj_1"
+            },
+            "node2": {
+                "name": "Ptuj_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Senoze_1"
+            },
+            "node2": {
+                "name": "Sezana_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Senoze_1"
+            },
+            "node2": {
+                "name": "Divaca_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Senoze_1"
+            },
+            "node2": {
+                "name": "Postoj_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Divaca_1"
+            },
+            "node2": {
+                "name": "Ajdovs_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Divaca_1"
+            },
+            "node2": {
+                "name": "Koper_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Izola_1"
+            },
+            "node2": {
+                "name": "Koper_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Sloven_1"
+            },
+            "node2": {
+                "name": "Dravog_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Sloven_1"
+            },
+            "node2": {
+                "name": "Velenj_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Velenj_1"
+            },
+            "node2": {
+                "name": "Dravog_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Murska_1"
+            },
+            "node2": {
+                "name": "Ljutom_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljutom_1"
+            },
+            "node2": {
+                "name": "Ormoz_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ormoz_1"
+            },
+            "node2": {
+                "name": "Ptuj_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ptuj_1"
+            },
+            "node2": {
+                "name": "Maribo_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Maribo_1"
+            },
+            "node2": {
+                "name": "Dravog_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Maribo_1"
+            },
+            "node2": {
+                "name": "SlovenID31_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Dravog_1"
+            },
+            "node2": {
+                "name": "Ravnen_1"
+            }
+        },
+        {
+            "node1": {
+                "name": "Trbovl_2"
+            },
+            "node2": {
+                "name": "Lasko_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Trbovl_2"
+            },
+            "node2": {
+                "name": "Ljublj_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Krsko_2"
+            },
+            "node2": {
+                "name": "Rogasj_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Krsko_2"
+            },
+            "node2": {
+                "name": "NovoMe_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Celje_2"
+            },
+            "node2": {
+                "name": "Velenj_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Celje_2"
+            },
+            "node2": {
+                "name": "Lasko_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Celje_2"
+            },
+            "node2": {
+                "name": "Kamnik_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Celje_2"
+            },
+            "node2": {
+                "name": "SlovenID31_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Lasko_2"
+            },
+            "node2": {
+                "name": "Maribo_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Lasko_2"
+            },
+            "node2": {
+                "name": "Ljublj_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Kranj_2"
+            },
+            "node2": {
+                "name": "Jeseni_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Kranj_2"
+            },
+            "node2": {
+                "name": "Koper_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Kranj_2"
+            },
+            "node2": {
+                "name": "Bled_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Kranj_2"
+            },
+            "node2": {
+                "name": "Ljublj_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Bled_2"
+            },
+            "node2": {
+                "name": "Tolmin_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "NovoMe_2"
+            },
+            "node2": {
+                "name": "Kovevj_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_2"
+            },
+            "node2": {
+                "name": "NovaGo_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_2"
+            },
+            "node2": {
+                "name": "Postoj_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_2"
+            },
+            "node2": {
+                "name": "Kovevj_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_2"
+            },
+            "node2": {
+                "name": "Kamnik_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_2"
+            },
+            "node2": {
+                "name": "Koper_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_2"
+            },
+            "node2": {
+                "name": "Maribo_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Tolmin_2"
+            },
+            "node2": {
+                "name": "NovaGo_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "NovaGo_2"
+            },
+            "node2": {
+                "name": "Ajdovs_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Portor_2"
+            },
+            "node2": {
+                "name": "Divaca_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Portor_2"
+            },
+            "node2": {
+                "name": "Izola_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Gornja_2"
+            },
+            "node2": {
+                "name": "Radenc_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Gornja_2"
+            },
+            "node2": {
+                "name": "Maribo_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Radenc_2"
+            },
+            "node2": {
+                "name": "Murska_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Rogasj_2"
+            },
+            "node2": {
+                "name": "Ptuj_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Senoze_2"
+            },
+            "node2": {
+                "name": "Sezana_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Senoze_2"
+            },
+            "node2": {
+                "name": "Divaca_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Senoze_2"
+            },
+            "node2": {
+                "name": "Postoj_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Divaca_2"
+            },
+            "node2": {
+                "name": "Ajdovs_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Divaca_2"
+            },
+            "node2": {
+                "name": "Koper_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Izola_2"
+            },
+            "node2": {
+                "name": "Koper_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Sloven_2"
+            },
+            "node2": {
+                "name": "Dravog_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Sloven_2"
+            },
+            "node2": {
+                "name": "Velenj_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Velenj_2"
+            },
+            "node2": {
+                "name": "Dravog_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Murska_2"
+            },
+            "node2": {
+                "name": "Ljutom_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljutom_2"
+            },
+            "node2": {
+                "name": "Ormoz_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ormoz_2"
+            },
+            "node2": {
+                "name": "Ptuj_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ptuj_2"
+            },
+            "node2": {
+                "name": "Maribo_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Maribo_2"
+            },
+            "node2": {
+                "name": "Dravog_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Maribo_2"
+            },
+            "node2": {
+                "name": "SlovenID31_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Dravog_2"
+            },
+            "node2": {
+                "name": "Ravnen_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Trbovl_3"
+            },
+            "node2": {
+                "name": "Lasko_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Trbovl_3"
+            },
+            "node2": {
+                "name": "Ljublj_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Krsko_3"
+            },
+            "node2": {
+                "name": "Rogasj_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Krsko_3"
+            },
+            "node2": {
+                "name": "NovoMe_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Celje_3"
+            },
+            "node2": {
+                "name": "Velenj_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Celje_3"
+            },
+            "node2": {
+                "name": "Lasko_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Celje_3"
+            },
+            "node2": {
+                "name": "Kamnik_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Celje_3"
+            },
+            "node2": {
+                "name": "SlovenID31_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Lasko_3"
+            },
+            "node2": {
+                "name": "Maribo_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Lasko_3"
+            },
+            "node2": {
+                "name": "Ljublj_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Kranj_3"
+            },
+            "node2": {
+                "name": "Jeseni_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Kranj_3"
+            },
+            "node2": {
+                "name": "Koper_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Kranj_3"
+            },
+            "node2": {
+                "name": "Bled_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Kranj_3"
+            },
+            "node2": {
+                "name": "Ljublj_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Bled_3"
+            },
+            "node2": {
+                "name": "Tolmin_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "NovoMe_3"
+            },
+            "node2": {
+                "name": "Kovevj_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_3"
+            },
+            "node2": {
+                "name": "NovaGo_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_3"
+            },
+            "node2": {
+                "name": "Postoj_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_3"
+            },
+            "node2": {
+                "name": "Kovevj_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_3"
+            },
+            "node2": {
+                "name": "Kamnik_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_3"
+            },
+            "node2": {
+                "name": "Koper_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_3"
+            },
+            "node2": {
+                "name": "Maribo_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Tolmin_3"
+            },
+            "node2": {
+                "name": "NovaGo_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "NovaGo_3"
+            },
+            "node2": {
+                "name": "Ajdovs_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Portor_3"
+            },
+            "node2": {
+                "name": "Divaca_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Portor_3"
+            },
+            "node2": {
+                "name": "Izola_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Gornja_3"
+            },
+            "node2": {
+                "name": "Radenc_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Gornja_3"
+            },
+            "node2": {
+                "name": "Maribo_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Radenc_3"
+            },
+            "node2": {
+                "name": "Murska_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Rogasj_3"
+            },
+            "node2": {
+                "name": "Ptuj_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Senoze_3"
+            },
+            "node2": {
+                "name": "Sezana_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Senoze_3"
+            },
+            "node2": {
+                "name": "Divaca_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Senoze_3"
+            },
+            "node2": {
+                "name": "Postoj_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Divaca_3"
+            },
+            "node2": {
+                "name": "Ajdovs_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Divaca_3"
+            },
+            "node2": {
+                "name": "Koper_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Izola_3"
+            },
+            "node2": {
+                "name": "Koper_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Sloven_3"
+            },
+            "node2": {
+                "name": "Dravog_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Sloven_3"
+            },
+            "node2": {
+                "name": "Velenj_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Velenj_3"
+            },
+            "node2": {
+                "name": "Dravog_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Murska_3"
+            },
+            "node2": {
+                "name": "Ljutom_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljutom_3"
+            },
+            "node2": {
+                "name": "Ormoz_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ormoz_3"
+            },
+            "node2": {
+                "name": "Ptuj_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ptuj_3"
+            },
+            "node2": {
+                "name": "Maribo_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Maribo_3"
+            },
+            "node2": {
+                "name": "Dravog_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Maribo_3"
+            },
+            "node2": {
+                "name": "SlovenID31_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Dravog_3"
+            },
+            "node2": {
+                "name": "Ravnen_3"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_1"
+            },
+            "node2": {
+                "name": "Ljublj_2"
+            }
+        },
+        {
+            "node1": {
+                "name": "Ljublj_2"
+            },
+            "node2": {
+                "name": "Ljublj_3"
+            }
+        }
+    ]
+}
