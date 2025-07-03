@@ -6,9 +6,6 @@ IntentMarcoPolo - 基于意图的MARCO算法
 1. 意图级别的操作（而非约束级别）
 2. CS-tree批量MUS枚举
 3. 领域特定的Z3冲突检测
-
-作者: AI Assistant
-日期: 2024
 """
 
 import os
@@ -36,7 +33,6 @@ class IntentMarcoPolo:
         """
         self.intent_processor = intent_processor
         self.map = map_solver
-        self.seeds = SeedManager(map_solver, stats, config)
         self.stats = stats
         self.config = config
         self.bias_high = self.config['bias'] == 'MUSes'
@@ -75,85 +71,69 @@ class IntentMarcoPolo:
 
     def enumerate(self):
         """
-        修改后的MUS/MSS枚举主循环
-        核心修改：当发现UNSAT种子时，使用CS-tree批量枚举所有MUS
+        修改后的MUS/MSS枚举主循环 (遵循MARCO优化算法)
+        核心修改：使用MaxSAT求解器直接生成MSS种子，UNSAT时调用CS-tree
         """
-        for seed, known_max in self.seeds:
+        while True:
+            with self.stats.time('seed'):
+                # 关键: next_seed()现在会返回一个最大模型 (如果bias=True)
+                seed = self.map.next_seed()
+            
+            if seed is None:
+                # MapSolver返回None，表示所有空间已探索，循环结束
+                if self.config['verbose']:
+                    print("- MapSolver探索完成，结束枚举。")
+                break
+
             if self.config['verbose']:
-                print(f"- 初始种子: {self._indices_to_intent_ids(seed)}")
+                print(f"- 新种子 (最大模型): {self._indices_to_intent_ids(seed)}")
 
             with self.stats.time('check'):
-                oldlen = len(seed)
-                # 使用IntentProcessor检查种子可满足性
-                seed_is_sat, payload = self.intent_processor.check(seed)
-                self.record_delta('checkA', oldlen, len(seed), seed_is_sat)
+                is_sat, payload = self.intent_processor.check(seed)
 
             if self.config['verbose']:
-                print(f"- 种子状态: {'SAT' if seed_is_sat else 'UNSAT'}")
+                print(f"- 种子状态: {'SAT' if is_sat else 'UNSAT'}")
 
-            if seed_is_sat:
-                # 处理可满足的种子 - 寻找MSS
-                if known_max:
-                    MSS = seed
-                else:
-                    with self.stats.time('grow'):
-                        oldlen = len(seed)
-                        MSS = self._grow_seed(seed)
-                        self.record_delta('grow', oldlen, len(MSS), True)
-
-                    if self.config['verbose']:
-                        print("- 执行grow -> MSS")
-
-                with self.stats.time('block'):
-                    res = ("S", MSS)
-                    yield res
+            if is_sat:
+                # 优化版MARCO的核心：
+                # 一个通过最大模型找到的可满足种子，其本身就是一个MSS。
+                MSS = seed
+                yield ("S", MSS)
+                with self.stats.time('block_down'):
                     self.map.block_down(MSS)
-
+                
                 if self.config['verbose']:
-                    print(f"- MSS已阻塞: {self._indices_to_intent_ids(MSS)}")
-
+                    print(f"- MSS已找到并阻塞: {self._indices_to_intent_ids(MSS)}")
             else:
-                # 处理不可满足的种子 - 使用CS-tree批量枚举MUS
+                # 种子不可满足，调用CS-tree进行批量shrink
                 self.got_top = True
+                with self.stats.time('cs_tree_shrink'):
+                    muses_batch = self.cs_tree_batch_shrink(seed)
+                
+                if self.config['verbose']:
+                    print(f"- CS-tree找到 {len(muses_batch)} 个MUS")
+                
+                with self.stats.time('block_batch'):
+                    if not muses_batch:
+                        # 如果没有找到MUS，阻塞当前种子以避免死循环
+                        self.map.block_up(seed)
+                        self.stats.increment_counter("cs_tree_rejected")
+                    else:
+                        # 批量处理返回的MUS
+                        for mus in muses_batch:
+                            yield ("U", mus)
+                            self.map.block_up(mus)
 
-                if known_max:
-                    # 如果已知是最小的，直接作为MUS
-                    MUS = seed
-                    with self.stats.time('block'):
-                        res = ("U", MUS)
-                        yield res
-                        self.map.block_up(MUS)
-                else:
-                    # 使用CS-tree批量枚举所有MUS
-                    with self.stats.time('cs_tree_shrink'):
-                        all_muses = self.cs_tree_shrink(seed)
-
-                    if self.config['verbose']:
-                        print(f"- CS-tree找到 {len(all_muses)} 个MUS")
-
-                    with self.stats.time('block_batch'):
-                        if not all_muses:
-                            # 如果没有找到MUS，阻塞当前种子以避免死循环
-                            self.map.block_up(seed)
-                            self.stats.increment_counter("parallel_rejected")
-                        else:
-                            # 批量处理返回的MUS
-                            for mus in all_muses:
-                                res = ("U", mus)
-                                yield res
-                                self.map.block_up(mus)
-
-                                if self.config['verbose']:
-                                    print(f"- MUS已阻塞: {self._indices_to_intent_ids(mus)}")
+                            if self.config['verbose']:
+                                print(f"- MUS已阻塞: {self._indices_to_intent_ids(mus)}")
 
         if self.pipe:
             self.pipe.send(('complete', self.stats))
             self.recv_thread.join()
 
-    def cs_tree_shrink(self, unsat_seed):
+    def cs_tree_batch_shrink(self, unsat_seed):
         """
-        CS-tree批量MUS枚举算法
-        基于"Finding All Minimal Unsatisfiable Subsets"论文的CS-tree方法
+        CS-tree批量MUS枚举算法的入口
         
         Args:
             unsat_seed: 不可满足的意图索引集合
@@ -164,119 +144,55 @@ class IntentMarcoPolo:
         if self.config['verbose']:
             print(f"开始CS-tree shrink，种子: {self._indices_to_intent_ids(unsat_seed)}")
 
-        answers = []  # 存储找到的所有MUS
-        self._recursive_cs_tree(set(), set(unsat_seed), answers)
+        found_muses = []
+        self._recursive_cs_tree(set(), set(unsat_seed), found_muses)
         
         if self.config['verbose']:
-            print(f"CS-tree完成，共找到 {len(answers)} 个MUS")
+            print(f"CS-tree完成，共找到 {len(found_muses)} 个MUS")
             
-        # 转换为列表格式返回
-        return [list(mus) for mus in answers]
+        return [list(mus) for mus in found_muses]
 
     def _recursive_cs_tree(self, D, P, A):
         """
-        CS-tree的递归实现
+        修正后的CS-tree递归实现
         
         Args:
             D: determined set - 当前路径上必须包含的意图集合
             P: potential set - 当前节点下待探索的意图集合  
             A: answers - 存储已找到MUS的列表（引用传递）
         """
-        # 剪枝1：可满足性剪枝
-        union_set = D | P
-        if union_set:
-            is_sat, _ = self.intent_processor.check(union_set)
-            if is_sat:
-                # 如果D∪P可满足，则此路径下所有子集都可满足
-                return
-
-        # 剪枝2：超集剪枝 - 检查D是否已经是某个已知MUS的超集
-        for known_mus in A:
-            if known_mus.issubset(D):
-                # D包含已知MUS，此路径不会产生新的MUS
-                return
-
-        # 如果P为空，检查D是否为MUS
-        if not P:
-            if D:
-                is_sat, _ = self.intent_processor.check(D)
-                if not is_sat:
-                    # D是不可满足的，且不是任何已知MUS的超集，所以是新MUS
-                    A.append(set(D))
+        # 剪枝1：超集剪枝 - 如果D已经是某个已知MUS的超集，则此路径无效
+        if any(known_mus.issubset(D) for known_mus in A):
             return
 
-        # 遍历P中的每个元素，构建子树
-        P_copy = list(P)  # 创建副本进行遍历
-        
-        for c in P_copy:
-            # 探索不包含c的左子树
-            self._recursive_cs_tree(D.copy(), P - {c}, A)
-            
-            # 更新D和P，准备探索包含c的右侧兄弟子树
-            D.add(c)
-            P.remove(c)
-            
-            # 再次进行超集剪枝，这是CS-tree的关键优化
-            for known_mus in A:
-                if known_mus.issubset(D):
-                    # 清理D中添加的c，因为D是引用传递
-                    D.remove(c)
-                    return  # 剪掉所有右侧兄弟
+        # 剪枝2：可满足性剪枝 - 如果 D U P 可满足，此路径无效
+        is_sat, _ = self.intent_processor.check(D | P)
+        if is_sat:
+            return
 
-    def _grow_seed(self, seed):
-        """
-        扩展可满足的种子到最大可满足集合(MSS)
-        """
-        current = set(seed)
-        all_indices = set(range(1, self.n + 1))
-        
-        # 贪心地添加更多意图
-        for idx in all_indices - current:
-            candidate = current | {idx}
-            is_sat, _ = self.intent_processor.check(candidate)
-            if is_sat:
-                current = candidate
-                
-        return list(current)
+        # 基本情况：如果P为空，则D是一个不可满足核
+        if not P:
+            # 此时的D已经通过了超集剪枝和可满足性剪枝（D自身是UNSAT）
+            # 它是一个新的MUS
+            A.append(D)
+            return
+
+        # 递归步骤：选择一个元素c，并探索两条分支
+        c = P.pop() 
+
+        # 分支1: 探索不包含c的子空间 (D, P)
+        self._recursive_cs_tree(D.copy(), P.copy(), A)
+
+        # 分支2: 探索包含c的子空间 (D U {c}, P)
+        D.add(c)
+        self._recursive_cs_tree(D.copy(), P.copy(), A)
 
     def _indices_to_intent_ids(self, indices):
         """将意图索引集合转换为意图ID列表，用于调试输出"""
         if hasattr(indices, '__iter__'):
-            return [self.intent_processor.get_intent_id_from_index(idx) for idx in indices]
+            return [self.intent_processor.get_intent_id_from_index(idx) for idx in sorted(list(indices))]
         else:
             return []
-
-
-class SeedManager:
-    """种子管理器，负责生成和管理探索种子"""
-    
-    def __init__(self, msolver, stats, config):
-        self.map = msolver
-        self.stats = stats
-        self.config = config
-        self._seed_queue = queue.Queue()
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        with self.stats.time('seed'):
-            if not self._seed_queue.empty():
-                return self._seed_queue.get()
-            else:
-                seed, known_max = self.seed_from_solver()
-                if seed is None:
-                    raise StopIteration
-                return seed, known_max
-
-    def add_seed(self, seed, known_max):
-        """添加种子到队列"""
-        self._seed_queue.put((seed, known_max))
-
-    def seed_from_solver(self):
-        """从map solver获取种子"""
-        known_max = self.config['maximize']
-        return self.map.next_seed(), known_max
 
 
 # 测试函数

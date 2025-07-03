@@ -39,7 +39,39 @@ class IntentProcessor:
         self.intent_ids = list(intents_data.keys())
         self.id_to_index = {intent_id: idx + 1 for idx, intent_id in enumerate(self.intent_ids)}
         self.index_to_id = {idx + 1: intent_id for idx, intent_id in enumerate(self.intent_ids)}
+        
+        # 方案1: 初始化检查结果的缓存
+        self.check_cache = {}
+
+        # 方案2: 初始化全局Z3求解器和变量
+        self.solver = Solver()
+        self.variables = {}
+        self.var_dict = {}
+        self._initialize_global_constraints()
     
+    def _initialize_global_constraints(self):
+        """
+        初始化全局Z3变量和约束 (只在启动时运行一次)
+        - 为拓扑中的每条边创建一个Z3变量
+        - 添加所有边权重 > 0 的基础约束
+        """
+        graph = nx.DiGraph()
+        for edge in self.topology['links']:
+            node1, node2 = edge['node1']['name'], edge['node2']['name']
+            graph.add_edge(node1, node2)
+            graph.add_edge(node2, node1)
+        
+        var_num = 0
+        for u, v in graph.edges():
+            key = f'{u}_{v}'
+            if key not in self.var_dict:
+                var_num += 1
+                var_name = f'x{var_num}'
+                self.var_dict[key] = var_name
+                self.variables[var_name] = Int(var_name)
+                # 将全局约束直接添加到类成员的求解器中
+                self.solver.add(self.variables[var_name] > 0)
+
     def check(self, intent_indices):
         """
         检查给定意图索引集合的可满足性
@@ -55,6 +87,12 @@ class IntentProcessor:
         if not intent_indices:
             return True, None
             
+        # 方案1: 使用 frozenset 作为缓存的键，因为它是可哈希的且无序
+        cache_key = frozenset(intent_indices)
+        if cache_key in self.check_cache:
+            # TODO: 可以在这里加入统计，记录缓存命中次数
+            return self.check_cache[cache_key]
+
         # 将索引转换为意图ID，然后提取对应的意图数据
         selected_intents = {}
         for idx in intent_indices:
@@ -64,257 +102,181 @@ class IntentProcessor:
         
         # 调用detection函数进行冲突检测
         try:
-            is_satisfiable, result_data = self._detection(selected_intents, self.topology)
+            # 现在，detection不再需要传入topology
+            is_satisfiable, result_data = self._detection(selected_intents)
+            # 方案1: 将结果存入缓存
+            self.check_cache[cache_key] = (is_satisfiable, result_data)
             return is_satisfiable, result_data
         except Exception as e:
             print(f"检测过程中发生错误: {e}")
             # 发生错误时保守地认为不可满足
+            # 方案1: 同样缓存错误结果，避免重复失败
+            self.check_cache[cache_key] = (False, None)
             return False, None
     
-    def _detection(self, intents, topology):
+    def _detection(self, intents):
         """
-        基于Z3的意图冲突检测函数
+        基于Z3的意图冲突检测函数 (增量求解 + CEGAR 优化版)
+        - 使用全局solver和变量，通过push/pop管理上下文
+        - 实现反例驱动的迭代深化（CEGAR）循环
+        - CEGAR循环内只对活跃意图进行再检查，以提升性能
         """
-        # 构建网络图
-        graph = nx.DiGraph()
-        for edge in topology['links']:
-            node1 = edge['node1']['name']
-            node2 = edge['node2']['name']
-            graph.add_edge(node1, node2, weight=1)
-            graph.add_edge(node2, node1, weight=1)
+        self.solver.push()
 
-        initial_graph = copy.deepcopy(graph)
-        constraints = []
-        intent_constraints = {}
-        var_dict = {}
-        variables = {}
-        var_num = 0
-        
-        # 约束到意图的映射，用于unsat_core分析
-        constraint_intent_map = {}
-        intent_infos = {}
+        try:
+            # 初始图，所有边的权重暂时视为1
+            graph = nx.DiGraph()
+            for edge in self.topology['links']:
+                node1, node2 = edge['node1']['name'], edge['node2']['name']
+                graph.add_edge(node1, node2, weight=1)
+                graph.add_edge(node2, node1, weight=1)
 
-        # 为每条边定义变量
-        for u, v in graph.edges():
-            key = f'{u}_{v}'
-            var_num += 1
-            var = f'x{var_num}'
-            var_dict[key] = var
-            variables[var] = Int(var)
-            var_cons = f'{var} > 0'
-            z3_expr = eval(var_cons, {}, variables)
-            constraints.append(z3_expr)
-            constraint_intent_map[len(constraints)] = 'global'
+            # 方案3: 初始时，所有意图都需要检查
+            active_intents_to_check = set(intents.keys())
+            
+            # 为所有涉及的意图预先生成它们声明的路径的成本表达式
+            intent_path_costs = {}
+            for intent_id, intent_data in intents.items():
+                intent_paths = self._get_intent_paths(intent_data)
+                intent_path_costs[intent_id] = [self._get_path_cost_expr(p) for p in intent_paths]
 
-        # 处理每个意图
-        for intent_id, intent in intents.items():
-            intent_cons = []
-            intent_constraints[intent_id] = intent_cons
-            intent_infos[intent_id] = {}
+            # 预先生成初始的核心约束（如 preference, ECMP 等）
+            for intent_id, intent_data in intents.items():
+                intent_type = intent_data[1]
+                costs = intent_path_costs[intent_id]
+                if intent_type == 'path_preference':
+                    self.solver.add(costs[0] < costs[1])
+                elif intent_type == 'ECMP':
+                    for i in range(1, len(costs)):
+                        self.solver.add(costs[0] == costs[i])
             
-            if intent[1] == 'path_preference':
-                var_dict, var_num = self._process_path_preference_intent(
-                    intent_id, intent, graph, var_dict, variables, var_num, 
-                    constraints, intent_cons, intent_infos, constraint_intent_map
-                )
-            elif intent[1] == 'simple':
-                var_dict, var_num = self._process_simple_intent(
-                    intent_id, intent, graph, var_dict, variables, var_num,
-                    constraints, intent_cons, intent_infos, constraint_intent_map
-                )
-            elif intent[1] == 'ECMP':
-                var_dict, var_num = self._process_ecmp_intent(
-                    intent_id, intent, graph, var_dict, variables, var_num,
-                    constraints, intent_cons, intent_infos, constraint_intent_map
-                )
+            # CEGAR 循环
+            loop_count = 0
+            while True:
+                loop_count += 1
+                if loop_count > self.total_intents * 2 + 5: # 防止无限循环的保险措施
+                    # 通常循环次数不会超过意图数的太多
+                    raise RuntimeError(f"CEGAR loop exceeds safety limit for intents: {list(intents.keys())}")
 
-        # 使用Z3求解器检查可满足性
-        solver = Solver()
-        
-        # 添加约束并跟踪
-        constraint_map = {}
-        for i, cons in enumerate(constraints, 1):
-            if i in constraint_intent_map:
-                intent_id = constraint_intent_map[i]
-                label = f'{intent_id}_c{i}'
-            else:
-                intent_id = 'global'
-                label = f'global_c{i}'
-            
-            solver.assert_and_track(cons, label)
-            constraint_map[label] = cons
+                check_result = self.solver.check()
 
-        # 检查可满足性
-        check_result = solver.check()
-        
-        if check_result == unsat:
-            unsat_core = solver.unsat_core()
-            return False, unsat_core
-        elif check_result == sat:
-            model = solver.model()
-            return True, model
-        else:
-            # unknown情况，保守地认为不可满足
-            return False, None
-    
-    def _process_path_preference_intent(self, intent_id, intent, graph, var_dict, variables, var_num,
-                                       constraints, intent_cons, intent_infos, constraint_intent_map):
-        """处理路径偏好意图"""
-        # 解析意图参数：[protocol, type, src, dst, primary_path, secondary_path]
-        src, dst = intent[2], intent[3]
-        primary_path, secondary_path = intent[4], intent[5]
-        
-        intent_infos[intent_id]['constraint_path'] = secondary_path
-        intent_infos[intent_id]['shortest_path'] = [primary_path, secondary_path]
-        intent_infos[intent_id]['primary_path'] = primary_path
-        intent_infos[intent_id]['paths'] = [primary_path, secondary_path]
-        
-        # 生成两条路径的变量表达式
-        path_vars = []
-        for path in [primary_path, secondary_path]:
-            path_expr, var_dict, var_num = self._get_path_expression(
-                path, var_dict, variables, var_num, constraints, intent_cons
-            )
-            path_vars.append(path_expr)
-        
-        # 记录路径约束变量
-        intent_infos[intent_id]['constraint_path_cons'] = path_vars[1]  # secondary
-        intent_infos[intent_id]['primary_path_cons'] = path_vars[0]     # primary
-        
-        # 生成偏好约束：primary_path < secondary_path
-        preference_cons = f'{path_vars[0]} < {path_vars[1]}'
-        z3_expr = eval(preference_cons, {}, variables)
-        z3_expr = simplify(z3_expr)
-        
-        constraints.append(z3_expr)
-        constraint_intent_map[len(constraints)] = intent_id
-        intent_cons.append(z3_expr)
-        
-        return var_dict, var_num
-    
-    def _process_simple_intent(self, intent_id, intent, graph, var_dict, variables, var_num,
-                              constraints, intent_cons, intent_infos, constraint_intent_map):
-        """处理简单路径意图"""
-        # 解析意图参数：[protocol, type, src, dst, path]
-        src, dst = intent[2], intent[3]
-        path = intent[4]
-        
-        # 标准化路径格式
-        if not isinstance(path[0], list):
-            paths = [path]
-        else:
-            paths = path
-            
-        intent_infos[intent_id]['constraint_path'] = paths
-        intent_infos[intent_id]['shortest_path'] = paths
-        intent_infos[intent_id]['paths'] = paths
-        intent_infos[intent_id]['relation_path_cons'] = {}
-        
-        # 为每条路径生成变量表达式
-        path_vars = []
-        for path in paths:
-            path_expr, var_dict, var_num = self._get_path_expression(
-                path, var_dict, variables, var_num, constraints, intent_cons
-            )
-            
-            # 保存路径到表达式的映射
-            key = '_'.join(path)
-            intent_infos[intent_id]['relation_path_cons'][key] = path_expr
-            path_vars.append(path_expr)
-        
-        intent_infos[intent_id]['constraint_path_cons'] = path_vars
-        
-        return var_dict, var_num
-    
-    def _process_ecmp_intent(self, intent_id, intent, graph, var_dict, variables, var_num,
-                            constraints, intent_cons, intent_infos, constraint_intent_map):
-        """处理ECMP意图"""
-        # 解析意图参数：[protocol, type, src, dst, ecmp_paths]
-        src, dst = intent[2], intent[3]
-        ecmp_paths = intent[4]
-        
-        intent_infos[intent_id]['constraint_path'] = ecmp_paths[0]
-        intent_infos[intent_id]['shortest_path'] = ecmp_paths
-        intent_infos[intent_id]['paths'] = ecmp_paths
-        
-        # 为每条ECMP路径生成变量表达式
-        path_vars = []
-        for path in ecmp_paths:
-            path_expr, var_dict, var_num = self._get_path_expression(
-                path, var_dict, variables, var_num, constraints, intent_cons
-            )
-            path_vars.append(path_expr)
-        
-        intent_infos[intent_id]['constraint_path_cons'] = path_vars[0]
-        
-        # 生成ECMP等价约束：所有路径权重相等
-        for j in range(1, len(path_vars)):
-            ecmp_constraint = f'{path_vars[0]} == {path_vars[j]}'
-            z3_expr = eval(ecmp_constraint, {}, variables)
-            z3_expr = simplify(z3_expr)
-            
-            constraints.append(z3_expr)
-            constraint_intent_map[len(constraints)] = intent_id
-            intent_cons.append(z3_expr)
-        
-        return var_dict, var_num
-    
-    def _get_path_expression(self, path, var_dict, variables, var_num, constraints, intent_cons):
-        """
-        为给定路径生成Z3变量表达式
-        
-        Args:
-            path: 路径节点列表，如 ['A', 'B', 'C']
-            
-        Returns:
-            tuple: (path_expression, updated_var_dict, updated_var_num)
-        """
-        if len(path) < 2:
-            return "0", var_dict, var_num
-            
-        # 处理第一条边
-        key = f'{path[0]}_{path[1]}'
-        if key not in var_dict:
-            var_num += 1
-            var = f'x{var_num}'
-            var_dict[key] = var
-            variables[var] = Int(var)
-            var_cons = f'{var} > 0'
-            z3_expr = eval(var_cons, {}, variables)
-            constraints.append(z3_expr)
-            intent_cons.append(z3_expr)
-        else:
-            var = var_dict[key]
-            var_cons = f'{var} > 0'
-            z3_expr = eval(var_cons, {}, variables)
-            if z3_expr not in intent_cons:
-                intent_cons.append(z3_expr)
+                if check_result == unsat:
+                    # 找到冲突，返回unsat core
+                    return False, self.solver.unsat_core()
                 
-        path_expr = var
+                # 更新图权重
+                model = self.solver.model()
+                for u, v, data in graph.edges(data=True):
+                    edge_var_name = self.var_dict.get(f'{u}_{v}')
+                    if edge_var_name:
+                        weight = model.eval(self.variables[edge_var_name], model_completion=True)
+                        graph[u][v]['weight'] = weight.as_long()
+
+                new_constraints_added = False
+                
+                # 修正：在每一轮迭代中，我们都必须检查当前子集中的所有意图，
+                # 因为权重的改变可能会影响任何一个意图。
+                for intent_id in intents.keys():
+                    intent_data = intents[intent_id]
+                    src, dst = intent_data[2], intent_data[3]
+                    intent_type = intent_data[1]
+                    intent_paths = self._get_intent_paths(intent_data)
+
+                    # 修正 #2: 对ECMP和其他意图类型采用不同的反例检查逻辑
+                    if intent_type == 'ECMP':
+                        # 对于ECMP，需要比较所有最短路径的集合
+                        try:
+                            current_shortest_paths = list(nx.all_shortest_paths(graph, src, dst, weight='weight'))
+                        except (nx.NetworkXNoPath, StopIteration):
+                            current_shortest_paths = []
+                        
+                        # 检查当前找到的所有最短路径是否就是意图声明的路径
+                        # 注意：需要考虑路径的顺序不影响集合的等价性
+                        intent_paths_set = {tuple(p) for p in intent_paths}
+                        current_shortest_paths_set = {tuple(p) for p in current_shortest_paths}
+
+                        if intent_paths_set != current_shortest_paths_set:
+                            # 如果集合不相等，所有不在意图内的当前最短路都是反例
+                            counterexample_paths = [p for p in current_shortest_paths if tuple(p) not in intent_paths_set]
+                            if counterexample_paths:
+                                new_constraints_added = True
+                                primary_path_cost = intent_path_costs[intent_id][0]
+                                for ce_path in counterexample_paths:
+                                    counterexample_cost = self._get_path_cost_expr(ce_path)
+                                    self.solver.add(primary_path_cost < counterexample_cost)
+                    else:
+                        # 对于 simple 和 path_preference
+                        
+                        # 找到所有备选路径
+                        all_alternative_paths = []
+                        try:
+                            path_generator = nx.shortest_simple_paths(graph, src, dst, weight='weight')
+                            # 限制备选路径数量，防止性能问题
+                            for i, p in enumerate(path_generator):
+                                if i >= 10: 
+                                    break
+                                # 只有当路径不是意图声明的路径时，才视为备选
+                                if tuple(p) not in [tuple(ip) for ip in intent_paths]:
+                                    all_alternative_paths.append(p)
+                        except (nx.NetworkXNoPath, StopIteration):
+                            continue
+
+                        # 检查是否有任何备选路径违反了意图约束
+                        primary_path_cost = intent_path_costs[intent_id][0]
+                        
+                        for alt_path in all_alternative_paths:
+                            alt_path_cost = self._get_path_cost_expr(alt_path)
+                            
+                            # simple意图：主路径必须比任何备选都短
+                            if intent_type == 'simple':
+                                # 检查模型是否已经满足条件
+                                if not model.eval(primary_path_cost < alt_path_cost, model_completion=True):
+                                    self.solver.add(primary_path_cost < alt_path_cost)
+                                    new_constraints_added = True
+                            
+                            # path_preference意图：主路径必须比任何备选都短
+                            elif intent_type == 'path_preference':
+                                # 检查模型是否已经满足条件
+                                if not model.eval(primary_path_cost < alt_path_cost, model_completion=True):
+                                    self.solver.add(primary_path_cost < alt_path_cost)
+                                    new_constraints_added = True
+
+                if not new_constraints_added:
+                    # 如果跑了一圈，所有意图都没有产生新约束，说明已经收敛
+                    return True, model
+
+        finally:
+            self.solver.pop()
+
+    def _get_intent_paths(self, intent_data):
+        """从意图数据中提取路径列表"""
+        intent_type = intent_data[1]
+        if intent_type == 'simple':
+            return [intent_data[4]]
+        elif intent_type == 'path_preference':
+            return [intent_data[4], intent_data[5]]
+        elif intent_type == 'ECMP':
+            return intent_data[4]
+        return []
+
+    def _get_path_cost_expr(self, path):
+        """为路径生成Z3成本表达式 (增量求解优化版)"""
+        if not path or len(path) < 2:
+            return 0
+
+        cost_terms = []
+        for i in range(len(path) - 1):
+            u, v = path[i], path[i+1]
+            key = f'{u}_{v}'
+            # 变量已在初始化时全部创建，这里直接使用
+            if key in self.var_dict:
+                cost_terms.append(self.variables[self.var_dict[key]])
         
-        # 处理剩余的边
-        for i in range(1, len(path) - 1):
-            key = f'{path[i]}_{path[i + 1]}'
-            if key not in var_dict:
-                var_num += 1
-                var = f'x{var_num}'
-                var_dict[key] = var
-                variables[var] = Int(var)
-                var_cons = f'{var} > 0'
-                z3_expr = eval(var_cons, {}, variables)
-                constraints.append(z3_expr)
-                intent_cons.append(z3_expr)
-            else:
-                var = var_dict[key]
-                var_cons = f'{var} > 0'
-                z3_expr = eval(var_cons, {}, variables)
-                if z3_expr not in intent_cons:
-                    intent_cons.append(z3_expr)
-                    
-            path_expr = path_expr + ' + ' + var
+        if not cost_terms:
+            return 0
             
-        return path_expr, var_dict, var_num
-    
+        return Sum(cost_terms)
+
     def get_intent_id_from_index(self, index):
         """将索引转换为意图ID"""
         return self.index_to_id.get(index)

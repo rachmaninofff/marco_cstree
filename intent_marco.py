@@ -5,10 +5,7 @@ IntentMarco - 基于MARCO+CS-tree的网络意图冲突分析器
 这是主入口程序，整合了：
 1. IntentProcessor - 基于Z3的意图冲突检测
 2. IntentMarcoPolo - 修改后的MARCO算法，支持CS-tree批量MUS枚举
-3. SimpleMapSolver - 简化的种子生成器
-
-作者: AI Assistant
-日期: 2024
+3. MinisatMapSolver - 基于SAT的种子生成器
 """
 
 import sys
@@ -17,11 +14,10 @@ import argparse
 import os
 from datetime import datetime
 
-# 导入自定义模块
-from intent_processor import IntentProcessor
-from intent_marco_polo import IntentMarcoPolo
-from simple_map_solver import SimpleMapSolver
-from utils import Statistics
+from .intent_processor import IntentProcessor
+from .intent_marco_polo import IntentMarcoPolo
+from .mapsolvers import MinisatMapSolver
+from .utils import Statistics
 
 
 class IntentConflictAnalyzer:
@@ -53,7 +49,7 @@ class IntentConflictAnalyzer:
         
         # 初始化组件
         self.intent_processor = IntentProcessor(self.intents_data, self.topology_data)
-        self.map_solver = SimpleMapSolver(
+        self.map_solver = MinisatMapSolver(
             n=len(self.intents_data),
             bias=(self.config['bias'] == 'MUSes')
         )

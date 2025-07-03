@@ -1,8 +1,0 @@
-{
-  "intent_1": ["ospf", "simple", "R1", "R2", ["R1", "R2"]],
-  "intent_2": ["ospf", "path_preference", "R1", "R2", ["R1", "R3", "R2"], ["R1", "R2"]],
-  "intent_3": ["ospf", "path_preference", "R1", "R2", ["R1", "R2"], ["R1", "R3", "R2"]],
-  "intent_4": ["ospf", "ECMP", "R1", "R3", [["R1", "R2", "R3"], ["R1", "R4", "R3"]]],
-  "intent_5": ["ospf", "simple", "R1", "R3", ["R1", "R2", "R3"]],
-  "intent_6": ["ospf", "path_preference", "R1", "R3", ["R1", "R4", "R3"], ["R1", "R2", "R3"]]
-} 

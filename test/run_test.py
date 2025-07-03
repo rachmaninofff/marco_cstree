@@ -15,14 +15,11 @@ import sys
 import os
 import json
 
-# 添加父目录到path以便导入模块
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from intent_processor import IntentProcessor
-from intent_marco_polo import IntentMarcoPolo  
-from simple_map_solver import SimpleMapSolver
-from utils import Statistics
-from intent_marco import IntentConflictAnalyzer
+from marco_cstree.intent_processor import IntentProcessor
+from marco_cstree.intent_marco_polo import IntentMarcoPolo  
+from marco_cstree.mapsolvers import MinisatMapSolver
+from marco_cstree.utils import Statistics
+from marco_cstree.intent_marco import IntentConflictAnalyzer
 
 
 def test_components():
@@ -58,9 +55,9 @@ def test_components():
     is_sat, payload = processor.check(test_indices)
     print(f"  多个意图 {test_indices}: {'可满足' if is_sat else '不可满足'}")
     
-    # 测试SimpleMapSolver
-    print("\n2. 测试SimpleMapSolver...")
-    map_solver = SimpleMapSolver(n=len(intents_data), bias=True)
+    # 测试MinisatMapSolver
+    print("\n2. 测试MinisatMapSolver...")
+    map_solver = MinisatMapSolver(n=len(intents_data), bias=True)
     
     seeds = []
     for i in range(3):

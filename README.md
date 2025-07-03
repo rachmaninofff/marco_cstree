@@ -1,152 +1,103 @@
-# MARCO+CS-tree 网络意图冲突分析器
+# MARCO+CS-tree 网络意图冲突分析器 (重构和优化版)
 
-基于MARCO算法和CS-tree方法的网络意图冲突分析工具，专门用于分析网络意图间的最小不可满足子集(MUS)和最大可满足子集(MSS)。
+基于MARCO算法和CS-tree方法的网络意图冲突分析工具，专门用于分析网络意图间的最小不可满足子集(MUS)和最大可满足子集(MSS)。本项目是基于一个初始原型的重构和优化版本，修复了核心算法的逻辑错误并显著提升了性能。
 
 ## 项目概述
 
 本项目实现了一个专门针对网络意图冲突分析的MARCO+CS-tree算法，核心特性包括：
 
-1. **意图级别操作**: 将原本基于约束(clauses)的MARCO算法提升到意图(intents)级别
-2. **CS-tree批量枚举**: 当发现不可满足种子时，使用CS-tree算法批量枚举所有MUS
-3. **Z3冲突检测**: 集成基于Z3的网络意图冲突检测逻辑
-4. **多种意图类型支持**: 支持simple、path_preference、ECMP三种意图类型
+1.  **意图级别操作**: 将原本基于约束(clauses)的MARCO算法提升到意图(intents)级别。
+2.  **CS-tree批量枚举**: 当发现不可满足种子时，使用CS-tree算法批量枚举所有MUS。
+3.  **精确的冲突检测**: 采用反例驱动的迭代深化（CEGAR）模型，集成基于Z3的意图冲突检测逻辑，确保分析的正确性。
+4.  **多种意图类型支持**: 支持`simple`、`path_preference`、`ECMP`三种意图类型。
+5.  **高性能**: 通过结果缓存、Z3增量求解和优化的CEGAR循环，分析性能得到数量级提升。
 
 ## 文件结构
 
 ```
 marco_cstree/
-├── intent_processor.py      # 意图处理器，封装Z3冲突检测逻辑
+├── intent_processor.py      # 意图处理器，封装基于Z3的CEGAR冲突检测逻辑
 ├── intent_marco_polo.py     # 修改后的MARCO算法，支持CS-tree
-├── simple_map_solver.py     # 简化的Map求解器，用于种子生成
-├── utils.py                 # 统计工具类
 ├── intent_marco.py          # 主入口程序
-├── README.md               # 本文档
-└── test/                   # 测试目录
-    ├── run_test.py         # 测试脚本
-    └── test_data/          # 测试数据
-        ├── intents.json    # 示例意图数据
-        └── topology.json   # 示例网络拓扑
+├── mapsolvers.py            # MARCO的Map求解器，包含MinisatMapSolver
+├── minisolvers.py           # pyminisolvers的Python接口
+├── libminisat.so            # Minisat求解器动态库
+├── libminicard.so           # Minicard求解器动态库 (未使用，为依赖完整性保留)
+├── utils.py                 # 统计工具类
+├── README.md                # 本文档
+└── test/                    # 测试目录
+    ├── run_test.py          # 组件测试脚本
+    ├── run_12_intents_test.py # 12意图场景测试脚本
+    └── test_data/           # 测试数据
+        ├── intents_12.json # 12意图测试数据
+        ├── topology.json    # 示例网络拓扑
 ```
 
 ## 核心组件
 
 ### 1. IntentProcessor (intent_processor.py)
-- 封装基于Z3的网络意图冲突检测逻辑
-- 支持三种意图类型：simple、path_preference、ECMP
-- 提供意图ID与索引的映射功能
-- 核心方法：`check(intent_indices)` - 检查意图集合的可满足性
+- 封装基于Z3的网络意图冲突检测逻辑。
+- **核心算法**: 采用**反例驱动的迭代深化(CEGAR)**模型。通过循环求解，不断从Z3模型中寻找反例（即不符合意图要求的最短路径），并将反例作为新约束加入求解器，直到系统收敛或发现冲突。
+- **性能优化**:
+  - **结果缓存**: 缓存已检查的意图子集的结果，避免在CS-tree中重复计算。
+  - **增量求解**: 维护一个全局Z3求解器实例，利用`push/pop`管理上下文，极大提升了求解效率。
 
-### 2. IntentMarcoPolo (intent_marco_polo.py)
-- 修改后的MARCO算法，支持意图级别操作
-- 实现CS-tree批量MUS枚举算法
-- 核心方法：
-  - `enumerate()` - 主枚举循环
-  - `cs_tree_shrink()` - CS-tree批量MUS枚举
-  - `_recursive_cs_tree()` - CS-tree递归实现
+### 2. MinisatMapSolver (mapsolvers.py)
+- MARCO算法的核心组件之一，作为"种子生成器"。
+- 它使用一个真正的**SAT求解器(Minisat)**，通过添加阻塞子句来系统性、无重复地探索所有可能的意图组合，为主循环提供检查的种子。
+- 已取代原版中基于启发式的`SimpleMapSolver`。
 
-### 3. SimpleMapSolver (simple_map_solver.py)
-- 简化版本的MapSolver，避免复杂的SAT求解器依赖
-- 使用启发式方法生成种子
-- 支持种子阻塞和清理功能
-
-### 4. Statistics (utils.py)
-- 统计信息收集器
-- 支持时间测量、计数器和任意统计数据收集
-- 提供详细的性能分析报告
+### 3. IntentMarcoPolo (intent_marco_polo.py)
+- MARCO算法的主驱动逻辑，在"意图"层面进行操作。
+- `enumerate()`: 主枚举循环，调用`MinisatMapSolver`生成种子，调用`IntentProcessor`检查种子。
+- `cs_tree_shrink()`: 当发现不可满足的种子时，调用CS-tree算法批量枚举所有包含的MUS。
 
 ## 使用方法
 
 ### 基本用法
 
-```bash
-# 基本分析
-python intent_marco.py intents.json topology.json
+由于项目内部使用了相对导入，必须将其作为一个模块来运行。请使用 `python3 -m` 命令。
 
-# 指定分析偏向
-python intent_marco.py intents.json topology.json --bias MUSes
+```bash
+# 基本分析 (使用12个意图的数据集)
+python3 -m marco_cstree.intent_marco marco_cstree/test/test_data/intents_12.json marco_cstree/test/test_data/topology.json
 
 # 保存结果到文件
-python intent_marco.py intents.json topology.json --output results.json
+python3 -m marco_cstree.intent_marco <intents.json> <topology.json> --output results.json
 
-# 设置超时和最大结果数
-python intent_marco.py intents.json topology.json --timeout 300 --max-results 50
-```
-
-### 输入文件格式
-
-#### 意图数据格式 (intents.json)
-```json
-{
-  "intent_1": ["ospf", "simple", "R1", "R3", ["R1", "R2", "R3"]],
-  "intent_2": ["ospf", "path_preference", "R1", "R3", ["R1", "R2", "R3"], ["R1", "R4", "R3"]],
-  "intent_3": ["ospf", "ECMP", "R1", "R4", [["R1", "R2", "R4"], ["R1", "R3", "R4"]]]
-}
-```
-
-意图格式说明：
-- `simple`: `[protocol, type, src, dst, path]`
-- `path_preference`: `[protocol, type, src, dst, primary_path, secondary_path]`
-- `ECMP`: `[protocol, type, src, dst, ecmp_paths_list]`
-
-#### 拓扑数据格式 (topology.json)
-```json
-{
-  "routers": [
-    {"name": "R1", "type": "router"},
-    {"name": "R2", "type": "router"}
-  ],
-  "links": [
-    {
-      "node1": {"name": "R1"},
-      "node2": {"name": "R2"},
-      "weight": 1,
-      "capacity": 100
-    }
-  ]
-}
+# 指定分析偏向 (MUSes 或 MSSes)
+python3 -m marco_cstree.intent_marco <intents.json> <topology.json> --bias MUSes
 ```
 
 ### 运行测试
 
 ```bash
-# 运行组件测试
-cd test
-python run_test.py
+# 运行12个意图的小规模集成测试
+python3 -m marco_cstree.test.run_12_intents_test
+
+# 运行原有的组件测试
+python3 -m marco_cstree.test.run_test
 ```
 
 ## 算法原理
 
 ### MARCO算法
 MARCO (MArco Reduction using COres) 是一个用于枚举MUS和MSS的算法：
-1. 生成种子（约束子集）
-2. 检查种子的可满足性
-3. 如果可满足，扩展为MSS；如果不可满足，收缩为MUS
-4. 阻塞已发现的结果，继续探索
+1.  **生成种子**: 使用`MinisatMapSolver`生成一个尚未被探索过的意图子集。
+2.  **检查种子**: 使用`IntentProcessor`检查该意图子集的可满足性。
+3.  **扩展/收缩**: 如果可满足，扩展为MSS；如果不可满足，使用`cs_tree_shrink`收缩为一个或多个MUS。
+4.  **阻塞**: 将发现的MSS或MUS作为阻塞子句添加到`MinisatMapSolver`中，以避免重复探索。
+5.  循环直至所有组合均被探索。
 
 ### CS-tree批量枚举
-当发现不可满足种子时，使用CS-tree算法批量枚举该种子中包含的所有MUS：
-1. 递归构建搜索树
-2. 使用可满足性剪枝和超集剪枝优化
-3. 一次性返回所有MUS，提高效率
-
-### 意图级别适配
-- 将原本基于约束的操作提升到意图级别
-- 使用IntentProcessor封装Z3冲突检测逻辑
-- 建立意图ID与索引的映射关系
-
-## 性能特点
-
-- **批量枚举**: CS-tree能够一次性枚举多个MUS，减少冗余计算
-- **智能剪枝**: 实现可满足性剪枝和超集剪枝，提高搜索效率
-- **领域适配**: 专门针对网络意图冲突问题优化
-- **统计分析**: 提供详细的性能统计和分析报告
+当发现不可满足种子时，使用CS-tree算法批量枚举该种子中包含的所有MUS，通过递归和剪枝（可满足性剪枝、超集剪枝）来提高效率。
 
 ## 依赖要求
 
 - Python 3.7+
 - z3-solver
 - networkx
-- 其他标准库
+- 项目已将`pyminisolvers`的编译后动态库(`libminisat.so`, `libminicard.so`)和接口文件直接包含在内，无需额外编译。
 
 ## 许可证
 
@@ -154,4 +105,4 @@ MARCO (MArco Reduction using COres) 是一个用于枚举MUS和MSS的算法：
 
 ## 作者
 
-AI Assistant - 2024 
+AI Assistant (重构与优化) - 2024 
