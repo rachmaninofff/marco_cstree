@@ -86,7 +86,7 @@ def main():
     for key, val in analyzer.stats.counters.items():
         print(f"  {key}: {val}")
     print("==================================================")
-
+    
     print("\n小规模测试完成！")
 
 if __name__ == "__main__":

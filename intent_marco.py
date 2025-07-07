@@ -135,7 +135,7 @@ class IntentConflictAnalyzer:
                 if result_count >= self.config['max_results']:
                     print(f"达到最大结果数量限制 ({self.config['max_results']})，停止分析")
                     break
-                    
+                
                 elapsed = (datetime.now() - start_time).total_seconds()
                 if elapsed > self.config['timeout']:
                     print(f"达到超时限制 ({self.config['timeout']}秒)，停止分析")

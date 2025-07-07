@@ -15,6 +15,9 @@ import sys
 import os
 import json
 
+# 添加父目录到路径
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+
 from marco_cstree.intent_processor import IntentProcessor
 from marco_cstree.intent_marco_polo import IntentMarcoPolo  
 from marco_cstree.mapsolvers import MinisatMapSolver
